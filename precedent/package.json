@@ -1,0 +1,27 @@
+{
+  "name": "precedent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Precedent - decision memory for Jira that catches work contradicting past decisions",
+  "license": "MIT",
+  "scripts": {
+    "build:ui": "npm --prefix static/ui install && npm --prefix static/ui run build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "lint": "forge lint",
+    "deploy": "npm run build:ui && forge deploy --non-interactive",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0",
+    "@forge/events": "^3.0.10",
+    "@forge/kvs": "^2.1.2",
+    "@forge/llm": "^1.0.10",
+    "@forge/resolver": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

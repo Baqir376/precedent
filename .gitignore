@@ -1,0 +1,4 @@
+node_modules/
+precedent/static/ui/build/
+.env
+*.log
