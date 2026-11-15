@@ -181,3 +181,28 @@ export async function addPlainComment(issueKey: string, text: string): Promise<v
     `Comment on ${issueKey}`,
   );
 }
+
+/**
+ * Which of these work items can the current user see? Findings carry issue summaries, so every list
+ * shown to a user is filtered through this to avoid leaking work items they cannot browse.
+ */
+export async function visibleIssueKeys(keys: string[]): Promise<Set<string>> {
+  const unique = [...new Set(keys.filter(Boolean))];
+  const visible = new Set<string>();
+  for (let i = 0; i < unique.length; i += 100) {
+    const batch = unique.slice(i, i + 100);
+    const res = await api.asUser().requestJira(route`/rest/api/3/issue/bulkfetch`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueIdsOrKeys: batch, fields: ['summary'] }),
+    });
+    if (!res.ok) throw new Error(`Permission check failed: ${res.status}`);
+    const body = (await res.json()) as { issues?: Array<{ key: string }> };
+    for (const issue of body.issues ?? []) visible.add(issue.key);
+  }
+  return visible;
+}
+
+export async function assertCanSee(issueKey: string): Promise<void> {
+  if (!(await visibleIssueKeys([issueKey])).has(issueKey)) throw new Error(`You don't have access to ${issueKey}.`);
+}

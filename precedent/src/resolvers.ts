@@ -3,7 +3,7 @@ import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
 import * as store from './lib/store';
 import { checkWork, decisionLineage, previewCheck, recordDecision, searchDecisions, type ManualDecisionInput } from './lib/engine';
-import { createIssue, getRecentComments, commentText, getUserName, getWorkItem, listProjects } from './lib/jira';
+import { assertCanSee, createIssue, getRecentComments, commentText, getUserName, getWorkItem, listProjects, visibleIssueKeys } from './lib/jira';
 import { pageOwners, recentConfluencePages, userTeams } from './lib/twg';
 import { DEMO_ISSUES, removeSampleDecisions, seedSampleDecisions } from './lib/seed';
 import { enqueue, importKey, type ImportStatus, type Job } from './events';
@@ -55,6 +55,7 @@ async function withDecisions(findings: Finding[]) {
 define<{ issueKey?: string }>('getIssueView', async ({ payload, context }) => {
   const issueKey = payload.issueKey ?? context.extension?.issue?.key;
   if (!issueKey) throw new Error('No issue in context.');
+  await assertCanSee(issueKey);
   const findings = (await store.listFindingsForIssue(issueKey)).filter((f) => f.status !== 'resolved');
   const items = await withDecisions(findings);
   const order = { contradicts: 0, revisits: 1, aligned: 2 } as const;
@@ -63,8 +64,9 @@ define<{ issueKey?: string }>('getIssueView', async ({ payload, context }) => {
   const owners = [...new Set(items.filter((i) => i.finding.relation !== 'aligned').map((i) => i.decision.ownerAccountId).filter(Boolean))];
   const teams: Record<string, string[]> = {};
   await Promise.all(owners.slice(0, 4).map(async (o) => (teams[o] = await userTeams(o))));
-  const recorded = (await store.listDecisionsByStatus('active')).filter((d) => d.sourceRef.includes(`:${issueKey}:`));
-  return { issueKey, items, teams, recorded, totalDecisions: (await store.listDecisionsByStatus('active', 2000)).length };
+  const active = await store.listDecisionsByStatus('active', 2000);
+  const recorded = active.filter((d) => d.sourceRef.includes(`:${issueKey}:`));
+  return { issueKey, items, teams, recorded, totalDecisions: active.length };
 });
 
 define<{ issueKey: string }>('recheckIssue', async ({ payload }) => {
@@ -77,12 +79,14 @@ define<{ id: string; status: FindingStatus }>('setFindingStatus', async ({ paylo
   if (!allowed.includes(payload.status)) throw new Error('Invalid status.');
   const f = await store.getFinding(payload.id);
   if (!f) throw new Error('Finding not found.');
+  await assertCanSee(f.issueKey);
   f.status = payload.status;
   return store.saveFinding(f);
 });
 
 /** Scan this issue's comments for decisions (on demand, as the user). */
 define<{ issueKey: string }>('scanIssueComments', async ({ payload }) => {
+  await assertCanSee(payload.issueKey);
   const comments = await getRecentComments(payload.issueKey, 50);
   const jobs: Job[] = comments
     .filter((c) => DECISION_CUE.test(commentText(c)))
@@ -111,8 +115,9 @@ define<{ query?: string; status?: DecisionStatus | 'all' }>('listDecisions', asy
     decisions = hits.filter((d) => allowed.has(d.id));
   }
   const open = await store.listFindingsByStatus('open');
+  const canSee = await visibleIssueKeys(open.map((f) => f.issueKey));
   const counts: Record<string, number> = {};
-  for (const f of open) if (f.relation !== 'aligned') counts[f.decisionId] = (counts[f.decisionId] ?? 0) + 1;
+  for (const f of open) if (f.relation !== 'aligned' && canSee.has(f.issueKey)) counts[f.decisionId] = (counts[f.decisionId] ?? 0) + 1;
   return { decisions, openConflicts: counts };
 });
 
@@ -124,7 +129,8 @@ define<{ id: string }>('getDecision', async ({ payload }) => {
     store.listFindingsForDecision(payload.id),
     userTeams(decision.ownerAccountId),
   ]);
-  return { decision, lineage, findings: findings.sort((a, b) => b.updatedAt - a.updatedAt), teams };
+  const canSee = await visibleIssueKeys(findings.map((f) => f.issueKey));
+  return { decision, lineage, findings: findings.filter((f) => canSee.has(f.issueKey)).sort((a, b) => b.updatedAt - a.updatedAt), teams };
 });
 
 define<{ id: string; patch: Partial<Decision> }>('updateDecision', async ({ payload }) => {
@@ -141,6 +147,7 @@ define<{ id: string; input: ManualDecisionInput }>('supersedeDecision', async ({
 });
 
 define<{ id: string }>('deleteDecision', async ({ payload }) => {
+  await requireAdmin();
   for (const f of await store.listFindingsForDecision(payload.id)) await store.deleteFinding(f.id);
   await store.deleteDecision(payload.id);
   return { deleted: payload.id };
@@ -148,7 +155,8 @@ define<{ id: string }>('deleteDecision', async ({ payload }) => {
 
 define<{ status?: FindingStatus }>('listFindings', async ({ payload }) => {
   const findings = await store.listFindingsByStatus(payload.status ?? 'open');
-  return withDecisions(findings);
+  const canSee = await visibleIssueKeys(findings.map((f) => f.issueKey));
+  return withDecisions(findings.filter((f) => canSee.has(f.issueKey)));
 });
 
 define<{ text: string }>('previewCheck', async ({ payload }) => {

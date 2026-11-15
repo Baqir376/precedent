@@ -4,7 +4,7 @@
  * Return values are plain JSON the model can read and cite.
  */
 import { checkWork, decisionLineage, previewCheck, recordDecision, searchDecisions } from './lib/engine';
-import { getUserName, getWorkItem } from './lib/jira';
+import { getUserName, getWorkItem, visibleIssueKeys } from './lib/jira';
 import * as store from './lib/store';
 import { userTeams } from './lib/twg';
 import type { Decision } from './lib/types';
@@ -59,7 +59,7 @@ export async function checkProposalAction(payload: Payload, ctx?: ActionContext)
     const issueKey = issueKeyFrom(payload, ctx);
     const text = String(payload.proposal ?? '').trim();
     if (issueKey && !text) {
-      const res = await checkWork(await getWorkItem(issueKey), { allowComment: false, respectProjectFilter: false });
+      const res = await checkWork(await getWorkItem(issueKey, true), { allowComment: false, respectProjectFilter: false });
       const decisions = new Map((await Promise.all(res.findings.map((f) => store.getDecision(f.decisionId)))).filter(Boolean).map((d) => [d!.id, d!]));
       return {
         issueKey,
@@ -103,7 +103,9 @@ export async function decisionHistoryAction(payload: Payload) {
     let decision = id ? await store.getDecision(id) : undefined;
     if (!decision && payload.query) decision = (await searchDecisions(String(payload.query), { includeInactive: true, limit: 1 }))[0];
     if (!decision) return { error: 'No matching decision. Search first with search-decisions.' };
-    const [lineage, findings, teams] = await Promise.all([decisionLineage(decision.id), store.listFindingsForDecision(decision.id), userTeams(decision.ownerAccountId)]);
+    const [lineage, allFindings, teams] = await Promise.all([decisionLineage(decision.id), store.listFindingsForDecision(decision.id), userTeams(decision.ownerAccountId)]);
+    const canSee = await visibleIssueKeys(allFindings.map((f) => f.issueKey)).catch(() => new Set<string>());
+    const findings = allFindings.filter((f) => canSee.has(f.issueKey));
     return {
       decision: brief(decision),
       ownerTeams: teams,
@@ -118,7 +120,9 @@ export async function decisionHistoryAction(payload: Payload) {
 export async function listConflictsAction(payload: Payload) {
   return safe(async () => {
     const project = String(payload.project ?? '').trim().toUpperCase();
-    const open = (await store.listFindingsByStatus('open')).filter((f) => f.relation !== 'aligned' && (!project || f.project === project));
+    const all = (await store.listFindingsByStatus('open')).filter((f) => f.relation !== 'aligned' && (!project || f.project === project));
+    const canSee = await visibleIssueKeys(all.map((f) => f.issueKey)).catch(() => new Set<string>());
+    const open = all.filter((f) => canSee.has(f.issueKey));
     const decisions = new Map((await Promise.all([...new Set(open.map((f) => f.decisionId))].map((id) => store.getDecision(id)))).filter(Boolean).map((d) => [d!.id, d!]));
     return {
       project: project || 'all',
