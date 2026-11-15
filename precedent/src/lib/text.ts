@@ -35,12 +35,25 @@ export function stem(word: string): string {
   return w;
 }
 
+const PUNCT = new Set(['.', '+', '-']);
+
+/** Strip leading/trailing ".", "+", "-" in linear time (a regex here is open to ReDoS). */
+function trimPunct(t: string): string {
+  let start = 0;
+  let end = t.length;
+  while (start < end && PUNCT.has(t[start])) start++;
+  while (end > start && PUNCT.has(t[end - 1])) end--;
+  return t.slice(start, end);
+}
+
+const ENTITIES: Record<string, string> = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+
 export function tokenize(text: string): string[] {
   return (text || '')
     .toLowerCase()
     .replace(/[`*_>#\[\](){}"“”'’]/g, ' ')
     .split(/[^a-z0-9.+-]+/)
-    .map((t) => t.replace(/^[.+-]+|[.+-]+$/g, ''))
+    .map(trimPunct)
     .filter((t) => t.length > 1 && !STOPWORDS.has(t))
     .map(stem);
 }
@@ -65,15 +78,11 @@ export function storageToText(xhtml: string): string {
     .replace(/<ac:structured-macro[^>]*ac:name="(code|noformat)"[\s\S]*?<\/ac:structured-macro>/g, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/tr|\/ac:task|\/ac:adf-node)[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    // Decode entities in one pass so "&amp;lt;" becomes "&lt;", not "<".
+    .replace(/&(?:nbsp|amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e])
     .replace(/[ \t]+/g, ' ')
-    .replace(/ *\n */g, '\n')
-    .replace(/\n\s*\n+/g, '\n')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 }
 

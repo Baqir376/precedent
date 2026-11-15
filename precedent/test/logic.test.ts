@@ -132,3 +132,15 @@ test('findDuplicate skips the model when nothing is related', async () => {
   assert.equal(await findDuplicate(x, LOG, async () => { called = true; return '{"duplicateOf":null}'; }), undefined);
   assert.equal(called, false);
 });
+
+test('storage entities decode in one pass (no double unescaping)', () => {
+  assert.equal(storageToText('<p>a &amp;lt;b&amp;gt; &lt;c&gt;</p>'), 'a &lt;b&gt; <c>');
+});
+
+test('tokenize trims punctuation without regex backtracking', () => {
+  const long = '-'.repeat(50000) + 'x' + '+'.repeat(50000);
+  const t0 = Date.now();
+  tokenize(long + ' node.js c++ ');
+  assert.ok(Date.now() - t0 < 500);
+  assert.deepEqual(tokenize('...node.js+++ c++'), ['node.j']);
+});
