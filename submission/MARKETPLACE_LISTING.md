@@ -58,3 +58,24 @@ Try it in two minutes: open **Apps → Precedent – Decision log**, load the sa
 - **Support / contact:** ophunter073@gmail.com
 - **Documentation:** the repository README.
 - **Data security & privacy questionnaire:** answers are in PRIVACY.md (no egress, Forge storage only, Forge LLMs).
+
+## Review form: scopes and why each is needed
+
+| Scope | Why Precedent needs it |
+|---|---|
+| `read:jira-work` | Read the summary and description of work items when they are created or edited, to check them against recorded decisions, and read comments to capture decisions written in them. |
+| `write:jira-work` | Post one comment on a work item when it contradicts a decision, and create the optional demo work items from the getting-started screen. |
+| `read:jira-user` | Show the display name of the person who recorded a decision, and refresh names during personal data reporting. |
+| `storage:app` | Store the decision log, findings and admin settings in Forge storage. |
+| `read:graph:page:confluence` | Find and read Confluence pages the current user has recently worked on, via Teamwork Graph, when they choose to import decisions from them. |
+| `read:graph:issue:jira` | Teamwork Graph queries return Jira work items alongside pages in the user's recent work. |
+| `read:graph:user:atlassian` | Identify the owners of an imported Confluence page, to credit the decision to the right person. |
+| `read:graph:team:atlassian` | Show which teams a decision owner belongs to, so readers know who to ask. |
+
+**Remote hosts / egress:** none. Precedent makes no requests outside Atlassian. AI runs through Forge LLMs.
+
+**Personal data:** stores decision owners' Atlassian account IDs and display names. A weekly scheduled job reports
+them through the personal data reporting API, anonymises closed accounts and refreshes updated names.
+
+**AI:** Forge LLMs (Anthropic Claude via Atlassian), used for decision extraction and conflict judgement. Admins can
+disable AI model access for the app in Atlassian Administration; Precedent then falls back to rule-based processing.

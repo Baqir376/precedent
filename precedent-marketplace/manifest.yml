@@ -25,6 +25,10 @@ modules:
         - avi:jira:commented:issue
       filter:
         ignoreSelf: true
+  scheduledTrigger:
+    - key: precedent-privacy-report
+      function: privacy-fn
+      interval: week
   consumer:
     - key: precedent-consumer
       queue: precedent-work
@@ -190,6 +194,8 @@ modules:
     - key: consumer-fn
       handler: index.onJob
       timeoutSeconds: 300
+    - key: privacy-fn
+      handler: index.reportPersonalData
     - key: action-search
       handler: index.searchDecisionsAction
     - key: action-check

@@ -48,6 +48,7 @@ Precedent uses a built-in rule-based reader instead.
 
 - Admins and users can delete decisions at any time. Deleting a decision deletes its findings.
 - Uninstalling Precedent deletes all of its stored data, following Atlassian's Forge data-retention process.
+- Every week Precedent reports the account IDs it stores to Atlassian's personal data reporting API. When an account is closed, its owner name and ID are removed from decisions.
 - Precedent keeps no backups of its own.
 
 ## Sharing
