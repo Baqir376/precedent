@@ -52,9 +52,11 @@ export function IssuePanel({ issueKey }: { issueKey: string }) {
 
   const visible = v.items.filter((i) => showClosed || i.finding.status === 'open' || i.finding.status === 'acknowledged');
   const hidden = v.items.length - visible.length;
-  const conflicts = v.items.filter((i) => i.finding.relation === 'contradicts' && i.finding.status === 'open').length;
-  const revisits = v.items.filter((i) => i.finding.relation === 'revisits' && i.finding.status === 'open').length;
-  const tone = conflicts ? 'bad' : revisits ? 'warn' : v.totalDecisions ? 'good' : '';
+  const live = (s: string) => s === 'open' || s === 'acknowledged';
+  const conflicts = v.items.filter((i) => i.finding.relation === 'contradicts' && live(i.finding.status)).length;
+  const unacknowledged = v.items.filter((i) => i.finding.relation === 'contradicts' && i.finding.status === 'open').length;
+  const revisits = v.items.filter((i) => i.finding.relation === 'revisits' && live(i.finding.status)).length;
+  const tone = unacknowledged ? 'bad' : conflicts || revisits ? 'warn' : v.totalDecisions ? 'good' : '';
 
   if (mode.kind !== 'none') {
     const superseding = mode.kind === 'supersede' ? mode.decision : undefined;
@@ -93,6 +95,7 @@ export function IssuePanel({ issueKey }: { issueKey: string }) {
           ) : conflicts ? (
             <b>
               Goes against {conflicts} past decision{conflicts === 1 ? '' : 's'}
+              {unacknowledged === 0 ? ' (acknowledged)' : ''}
             </b>
           ) : revisits ? (
             <b>
@@ -157,7 +160,7 @@ export function IssuePanel({ issueKey }: { issueKey: string }) {
                 </button>
                 <button
                   className="btn sm subtle"
-                  onClick={() => void askPrecedent(`On ${issueKey}: explain decision ${d.id} ("${d.statement}") and what we should do about the conflict.`)}
+                  onClick={async () => act.setError(await askPrecedent(`On ${issueKey}: explain decision ${d.id} ("${d.statement}") and what we should do about the conflict.`))}
                 >
                   Ask Precedent
                 </button>

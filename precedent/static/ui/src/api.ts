@@ -20,12 +20,15 @@ export function openIssue(key: string) {
   void router.open(`/browse/${key}`).catch(() => undefined);
 }
 
-export async function askPrecedent(prompt: string) {
+/** Open Rovo chat with the Precedent agent. Returns an error message when it cannot. */
+export async function askPrecedent(prompt: string): Promise<string | null> {
   try {
+    if (!(await rovo.isEnabled())) return 'Rovo is not enabled on this site, so the Precedent agent cannot open. An admin can turn on Rovo in Atlassian Administration.';
     await rovo.open({ type: 'forge', agentKey: 'precedent-agent', agentName: 'Precedent', prompt });
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (e) {
+    console.error('[precedent] rovo.open failed', e);
+    return `Could not open Rovo chat: ${e instanceof Error ? e.message : String(e)}. Open Rovo and choose the Precedent agent instead.`;
   }
 }
 

@@ -20,6 +20,7 @@ export function DecisionLog() {
   const openConflicts = (conflicts.data ?? []).filter((i) => i.finding.relation !== 'aligned');
   // Bumped after any change so tabs that cache their own data reload.
   const [version, setVersion] = useState(0);
+  const [rovoError, setRovoError] = useState<string | null>(null);
   // Keep the getting-started card until the user has created demo work or closes it.
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
   useEffect(() => {
@@ -41,12 +42,13 @@ export function DecisionLog() {
         </div>
         <button
           className="btn"
-          onClick={() => void askPrecedent('What are the most important decisions in our log, and is anything currently contradicting them?')}
+          onClick={async () => setRovoError(await askPrecedent('What are the most important decisions in our log, and is anything currently contradicting them?'))}
         >
           Ask Precedent in Rovo
         </button>
       </div>
 
+      <ErrorBanner error={rovoError} onClose={() => setRovoError(null)} />
       {setup.data && onboarding && (
         <Onboarding setup={setup.data} onDone={refreshAll} goImport={() => setTab('import')} onClose={() => setOnboarding(false)} />
       )}
@@ -350,7 +352,7 @@ function DecisionDetail({ id, onChange, onSelect, onDeleted }: { id: string; onC
         {(d.status === 'reversed' || d.status === 'superseded') && !d.supersededBy && (
           <button className="btn sm subtle" onClick={() => setStatus('active')} disabled={!!act.busy}>Reactivate</button>
         )}
-        <button className="btn sm subtle" onClick={() => void askPrecedent(`Explain decision ${d.id}: "${d.statement}" — the rationale, who to ask, and whether it still holds.`)}>
+        <button className="btn sm subtle" onClick={async () => act.setError(await askPrecedent(`Explain decision ${d.id}: "${d.statement}" — the rationale, who to ask, and whether it still holds.`))}>
           Ask Precedent
         </button>
         {!confirmDelete ? (
