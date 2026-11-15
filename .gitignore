@@ -11,3 +11,4 @@ precedent/static/ui/build/
 precedent-marketplace/*
 !precedent-marketplace/manifest.yml
 !submission/assets/*.png
+!submission/listing-images/*.png
