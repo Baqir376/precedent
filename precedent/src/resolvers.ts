@@ -283,6 +283,9 @@ define<{ projectKey: string; count?: number }>('createDemoIssues', async ({ payl
   const n = Math.max(1, Math.min(DEMO_ISSUES.length, payload.count ?? DEMO_ISSUES.length));
   const keys: string[] = [];
   for (const issue of DEMO_ISSUES.slice(0, n)) keys.push(await createIssue(payload.projectKey, issue.summary, issue.description));
+  // Jira marks events caused by this app as self-generated and the trigger ignores them (to avoid
+  // loops), so queue the checks for the demo work items explicitly.
+  await enqueue(keys.map((issueKey) => ({ kind: 'check', issueKey, allowComment: true })), 5);
   return { keys };
 });
 

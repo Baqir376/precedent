@@ -18,7 +18,15 @@ export function DecisionLog() {
   const setup = useLoad(() => call<Setup>('getSetup'));
   const conflicts = useLoad(() => call<FindingItem[]>('listFindings', { status: 'open' }));
   const openConflicts = (conflicts.data ?? []).filter((i) => i.finding.relation !== 'aligned');
+  // Bumped after any change so tabs that cache their own data reload.
+  const [version, setVersion] = useState(0);
+  // Keep the getting-started card until the user has created demo work or closes it.
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (onboarding === null && setup.data) setOnboarding(setup.data.counts.total === 0);
+  }, [setup.data, onboarding]);
   const refreshAll = () => {
+    setVersion((v) => v + 1);
     void setup.reload();
     void conflicts.reload();
   };
@@ -39,7 +47,9 @@ export function DecisionLog() {
         </button>
       </div>
 
-      {setup.data && setup.data.counts.total === 0 && <Onboarding setup={setup.data} onDone={refreshAll} goImport={() => setTab('import')} />}
+      {setup.data && onboarding && (
+        <Onboarding setup={setup.data} onDone={refreshAll} goImport={() => setTab('import')} onClose={() => setOnboarding(false)} />
+      )}
 
       {setup.data && setup.data.counts.total > 0 && (
         <div className="stats">
@@ -67,7 +77,7 @@ export function DecisionLog() {
         ))}
       </div>
 
-      {tab === 'decisions' && <DecisionsTab onChange={refreshAll} />}
+      {tab === 'decisions' && <DecisionsTab key={version} onChange={refreshAll} />}
       {tab === 'conflicts' && <ConflictsTab data={conflicts} />}
       {tab === 'check' && <CheckTab />}
       {tab === 'import' && <ImportTab onImported={refreshAll} />}
@@ -79,23 +89,30 @@ export function DecisionLog() {
 
 // ---------------------------------------------------------------- onboarding
 
-function Onboarding({ setup, onDone, goImport }: { setup: Setup; onDone: () => void; goImport: () => void }) {
+function Onboarding({ setup, onDone, goImport, onClose }: { setup: Setup; onDone: () => void; goImport: () => void; onClose: () => void }) {
   const act = useAction();
   const [project, setProject] = useState(setup.projects[0]?.key ?? '');
   const [created, setCreated] = useState<string[]>([]);
   return (
     <div className="card stack lg">
-      <div>
-        <h2>Get started in two minutes</h2>
-        <p className="subtle">Precedent needs decisions to protect. Import your own, or try it with a sample log from a fictional payments team.</p>
+      <div className="row between" style={{ alignItems: 'flex-start' }}>
+        <div className="grow">
+          <h2>Get started in two minutes</h2>
+          <p className="subtle">Precedent needs decisions to protect. Import your own, or try it with a sample log from a fictional payments team.</p>
+        </div>
+        <button className="btn subtle sm" onClick={onClose}>Close</button>
       </div>
       <div className="steps">
         <div className="step stack">
           <h3>Load sample decisions</h3>
           <p className="muted">10 realistic architecture and policy decisions, clearly tagged as samples.</p>
-          <div>
-            <button className="btn primary" disabled={!!act.busy} onClick={() => act.run('seed', async () => { await call('seedSamples'); onDone(); })}>
-              {act.busy === 'seed' ? 'Loading…' : 'Load samples'}
+          <div className="row">
+            <button
+              className={`btn ${setup.counts.samples ? '' : 'primary'}`}
+              disabled={!!act.busy || setup.counts.samples > 0}
+              onClick={() => act.run('seed', async () => { await call('seedSamples'); onDone(); })}
+            >
+              {act.busy === 'seed' ? 'Loading…' : setup.counts.samples ? '✓ Samples loaded' : 'Load samples'}
             </button>
           </div>
         </div>
@@ -109,8 +126,8 @@ function Onboarding({ setup, onDone, goImport }: { setup: Setup; onDone: () => v
               ))}
             </select>
             <button
-              className="btn"
-              disabled={!project || !!act.busy}
+              className={`btn ${setup.counts.samples && !created.length ? 'primary' : ''}`}
+              disabled={!project || !!act.busy || created.length > 0}
               onClick={() => act.run('demo', async () => setCreated((await call<{ keys: string[] }>('createDemoIssues', { projectKey: project })).keys))}
             >
               {act.busy === 'demo' ? 'Creating…' : 'Create'}
