@@ -34,7 +34,8 @@ modules:
   rovo:agent:
     - key: precedent-agent
       name: Precedent
-      description: Remembers your team's decisions — why they were made, who made them — and warns before new work contradicts them.
+      description: Remembers your team's decisions — why they were made, who made them
+        — and warns before new work contradicts them.
       icon: resource:ui;icon.svg
       prompt: resource:prompts;agent-prompt.txt
       conversationStarters:
@@ -63,15 +64,17 @@ modules:
       function: action-search
       actionVerb: GET
       description: >
-        Search the team's decision log (architecture decisions, policies, technology choices) by topic.
-        Use this whenever someone asks what was decided, why something is done a certain way, or before
-        recommending a technology or approach.
+        Search the team's decision log (architecture decisions, policies,
+        technology choices) by topic. Use this whenever someone asks what was
+        decided, why something is done a certain way, or before recommending a
+        technology or approach.
       inputs:
         query:
           title: Query
           type: string
           required: true
-          description: Topic or keywords, e.g. "session storage redis" or "graphql partners".
+          description: Topic or keywords, e.g. "session storage redis" or "graphql
+            partners".
         includeHistory:
           title: Include superseded decisions
           type: boolean
@@ -82,9 +85,9 @@ modules:
       function: action-check
       actionVerb: GET
       description: >
-        Check a proposed change, design, pull request description or Jira work item against the decision log
-        and report contradictions, decisions it revisits, and decisions it aligns with. If the user is on a Jira
-        work item and gives no proposal text, the current work item is checked.
+        Check a proposal, design, PR description or Jira work item against past
+        decisions; reports contradictions, revisits and alignments. With no
+        proposal text, checks the current Jira work item.
       inputs:
         proposal:
           title: Proposal
@@ -101,14 +104,16 @@ modules:
       function: action-record
       actionVerb: CREATE
       description: >
-        Record a decision the user or team has made so future work is checked against it. Only use after the
-        user confirms the wording. Use supersedesId when the new decision replaces an existing one.
+        Record a decision the user or team has made so future work is checked
+        against it. Only use after the user confirms the wording. Use
+        supersedesId when the new decision replaces an existing one.
       inputs:
         statement:
           title: Decision
           type: string
           required: true
-          description: One imperative sentence, e.g. "Use Postgres for sessions; do not use Redis."
+          description: One imperative sentence, e.g. "Use Postgres for sessions; do not
+            use Redis."
         rationale:
           title: Rationale
           type: string
@@ -144,8 +149,9 @@ modules:
       function: action-history
       actionVerb: GET
       description: >
-        Get the full story of one decision: rationale, owner and their teams, what it replaced or was replaced
-        by, and which work items have challenged it.
+        Get the full story of one decision: rationale, owner and their teams,
+        what it replaced or was replaced by, and which work items have
+        challenged it.
       inputs:
         decisionId:
           title: Decision id
@@ -162,7 +168,8 @@ modules:
       function: action-conflicts
       actionVerb: GET
       description: >
-        List work items that currently contradict or revisit past decisions and have not been resolved.
+        List work items that currently contradict or revisit past decisions and
+        have not been resolved.
       inputs:
         project:
           title: Project key
@@ -215,34 +222,55 @@ permissions:
       - unsafe-inline
 
 app:
-  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  id: ari:cloud:ecosystem::app/ca7f8b07-7edf-4029-a78f-04011f510a7c
   runtime:
     name: nodejs22.x
   storage:
     entities:
       - name: decision
         attributes:
-          id: { type: string }
-          statement: { type: string }
-          rationale: { type: string }
-          alternatives: { type: any }
-          keywords: { type: any }
-          scope: { type: any }
-          revisitWhen: { type: string }
-          status: { type: string }
-          ownerAccountId: { type: string }
-          ownerName: { type: string }
-          source: { type: string }
-          sourceUrl: { type: string }
-          sourceRef: { type: string }
-          sourceTitle: { type: string }
-          project: { type: string }
-          confidence: { type: float }
-          decidedAt: { type: string }
-          createdAt: { type: integer }
-          updatedAt: { type: integer }
-          supersededBy: { type: string }
-          supersedes: { type: string }
+          id:
+            type: string
+          statement:
+            type: string
+          rationale:
+            type: string
+          alternatives:
+            type: any
+          keywords:
+            type: any
+          scope:
+            type: any
+          revisitWhen:
+            type: string
+          status:
+            type: string
+          ownerAccountId:
+            type: string
+          ownerName:
+            type: string
+          source:
+            type: string
+          sourceUrl:
+            type: string
+          sourceRef:
+            type: string
+          sourceTitle:
+            type: string
+          project:
+            type: string
+          confidence:
+            type: float
+          decidedAt:
+            type: string
+          createdAt:
+            type: integer
+          updatedAt:
+            type: integer
+          supersededBy:
+            type: string
+          supersedes:
+            type: string
         indexes:
           - sourceRef
           - name: by-status-created
@@ -252,20 +280,34 @@ app:
               - createdAt
       - name: finding
         attributes:
-          id: { type: string }
-          issueKey: { type: string }
-          issueSummary: { type: string }
-          project: { type: string }
-          decisionId: { type: string }
-          relation: { type: string }
-          confidence: { type: float }
-          explanation: { type: string }
-          suggestion: { type: string }
-          status: { type: string }
-          method: { type: string }
-          commented: { type: boolean }
-          createdAt: { type: integer }
-          updatedAt: { type: integer }
+          id:
+            type: string
+          issueKey:
+            type: string
+          issueSummary:
+            type: string
+          project:
+            type: string
+          decisionId:
+            type: string
+          relation:
+            type: string
+          confidence:
+            type: float
+          explanation:
+            type: string
+          suggestion:
+            type: string
+          status:
+            type: string
+          method:
+            type: string
+          commented:
+            type: boolean
+          createdAt:
+            type: integer
+          updatedAt:
+            type: integer
         indexes:
           - issueKey
           - decisionId
