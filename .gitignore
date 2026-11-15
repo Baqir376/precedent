@@ -2,3 +2,7 @@ node_modules/
 precedent/static/ui/build/
 .env
 *.log
+
+# local screenshots and scratch
+*.png
+!precedent/static/ui/public/*.png

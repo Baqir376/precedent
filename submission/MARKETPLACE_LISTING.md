@@ -55,6 +55,6 @@ Try it in two minutes: open **Apps → Precedent – Decision log**, load the sa
 
 ## Links required by Marketplace
 - **Privacy policy:** host `submission/PRIVACY.md` publicly (for example in the public GitHub repository).
-- **Support / contact:** support email or issue tracker (to be decided).
+- **Support / contact:** ophunter073@gmail.com
 - **Documentation:** the repository README.
 - **Data security & privacy questionnaire:** answers are in PRIVACY.md (no egress, Forge storage only, Forge LLMs).

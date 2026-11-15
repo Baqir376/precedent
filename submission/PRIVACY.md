@@ -57,4 +57,4 @@ app.
 
 ## Contact
 
-Questions about this policy: **[support contact — to be filled in]**.
+Questions about this policy: **ophunter073@gmail.com**.
