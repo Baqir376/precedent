@@ -1,0 +1,318 @@
+modules:
+  # ---------- UI ----------
+  jira:issuePanel:
+    - key: precedent-issue-panel
+      resource: ui
+      resolver:
+        function: resolver-fn
+      title: Precedent
+      icon: resource:ui;icon.svg
+  jira:globalPage:
+    - key: precedent-decision-log
+      resource: ui
+      resolver:
+        function: resolver-fn
+      title: Precedent – Decision log
+      icon: resource:ui;icon.svg
+
+  # ---------- Event-driven checks ----------
+  trigger:
+    - key: precedent-jira-events
+      function: trigger-fn
+      events:
+        - avi:jira:created:issue
+        - avi:jira:updated:issue
+        - avi:jira:commented:issue
+      filter:
+        ignoreSelf: true
+  consumer:
+    - key: precedent-consumer
+      queue: precedent-work
+      function: consumer-fn
+
+  # ---------- Rovo ----------
+  rovo:agent:
+    - key: precedent-agent
+      name: Precedent
+      description: Remembers your team's decisions — why they were made, who made them
+        — and warns before new work contradicts them.
+      icon: resource:ui;icon.svg
+      prompt: resource:prompts;agent-prompt.txt
+      conversationStarters:
+        - Does this work item contradict any past decisions?
+        - Why did we decide against Redis for sessions?
+        - What open decision conflicts are there in my project?
+        - Record a decision from this conversation
+      actions:
+        - search-decisions
+        - check-proposal
+        - record-decision
+        - decision-history
+        - list-conflicts
+  rovo:mcp:
+    - key: precedent-mcp
+      name: Precedent decisions
+      tools:
+        - search-decisions
+        - check-proposal
+        - record-decision
+        - decision-history
+        - list-conflicts
+  action:
+    - key: search-decisions
+      name: Search decisions
+      function: action-search
+      actionVerb: GET
+      description: >
+        Search the team's decision log (architecture decisions, policies,
+        technology choices) by topic. Use this whenever someone asks what was
+        decided, why something is done a certain way, or before recommending a
+        technology or approach.
+      inputs:
+        query:
+          title: Query
+          type: string
+          required: true
+          description: Topic or keywords, e.g. "session storage redis" or "graphql
+            partners".
+        includeHistory:
+          title: Include superseded decisions
+          type: boolean
+          required: false
+          description: Set true to also return superseded and reversed decisions.
+    - key: check-proposal
+      name: Check against past decisions
+      function: action-check
+      actionVerb: GET
+      description: >
+        Check a proposal, design, PR description or Jira work item against past
+        decisions; reports contradictions, revisits and alignments. With no
+        proposal text, checks the current Jira work item.
+      inputs:
+        proposal:
+          title: Proposal
+          type: string
+          required: false
+          description: Free-text description of the planned change.
+        issueKey:
+          title: Work item key
+          type: string
+          required: false
+          description: Jira work item key such as PAY-123 to check instead of free text.
+    - key: record-decision
+      name: Record a decision
+      function: action-record
+      actionVerb: CREATE
+      description: >
+        Record a decision the user or team has made so future work is checked
+        against it. Only use after the user confirms the wording. Use
+        supersedesId when the new decision replaces an existing one.
+      inputs:
+        statement:
+          title: Decision
+          type: string
+          required: true
+          description: One imperative sentence, e.g. "Use Postgres for sessions; do not
+            use Redis."
+        rationale:
+          title: Rationale
+          type: string
+          required: false
+          description: Why the decision was made.
+        rejectedAlternatives:
+          title: Rejected alternatives
+          type: string
+          required: false
+          description: Comma-separated options that were considered and rejected.
+        scope:
+          title: Scope
+          type: string
+          required: false
+          description: Comma-separated systems or areas it applies to.
+        revisitWhen:
+          title: Revisit when
+          type: string
+          required: false
+          description: Condition under which the decision should be reconsidered.
+        issueKey:
+          title: Work item key
+          type: string
+          required: false
+          description: Jira work item the decision was made on.
+        supersedesId:
+          title: Supersedes decision id
+          type: string
+          required: false
+          description: Id of the decision this one replaces (from search-decisions).
+    - key: decision-history
+      name: Explain a decision
+      function: action-history
+      actionVerb: GET
+      description: >
+        Get the full story of one decision: rationale, owner and their teams,
+        what it replaced or was replaced by, and which work items have
+        challenged it.
+      inputs:
+        decisionId:
+          title: Decision id
+          type: string
+          required: false
+          description: Decision id from search-decisions.
+        query:
+          title: Query
+          type: string
+          required: false
+          description: Topic to find the decision if no id is known.
+    - key: list-conflicts
+      name: List open conflicts
+      function: action-conflicts
+      actionVerb: GET
+      description: >
+        List work items that currently contradict or revisit past decisions and
+        have not been resolved.
+      inputs:
+        project:
+          title: Project key
+          type: string
+          required: false
+          description: Jira project key to filter by, e.g. PAY. Omit for all projects.
+
+  llm:
+    - key: precedent-llm
+      model:
+        - claude
+
+  function:
+    - key: resolver-fn
+      handler: index.handler
+    - key: trigger-fn
+      handler: index.onJiraEvent
+    - key: consumer-fn
+      handler: index.onJob
+      timeoutSeconds: 300
+    - key: action-search
+      handler: index.searchDecisionsAction
+    - key: action-check
+      handler: index.checkProposalAction
+    - key: action-record
+      handler: index.recordDecisionAction
+    - key: action-history
+      handler: index.decisionHistoryAction
+    - key: action-conflicts
+      handler: index.listConflictsAction
+
+resources:
+  - key: ui
+    path: static/ui/build
+  - key: prompts
+    path: prompts
+
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - read:jira-user
+    - storage:app
+    - read:graph:page:confluence
+    - read:graph:issue:jira
+    - read:graph:user:atlassian
+    - read:graph:team:atlassian
+  content:
+    styles:
+      - unsafe-inline
+
+app:
+  id: ari:cloud:ecosystem::app/19ffa731-4137-4e04-88cc-e5d3f53fe978
+  runtime:
+    name: nodejs22.x
+  storage:
+    entities:
+      - name: decision
+        attributes:
+          id:
+            type: string
+          statement:
+            type: string
+          rationale:
+            type: string
+          alternatives:
+            type: any
+          keywords:
+            type: any
+          scope:
+            type: any
+          revisitWhen:
+            type: string
+          status:
+            type: string
+          ownerAccountId:
+            type: string
+          ownerName:
+            type: string
+          source:
+            type: string
+          sourceUrl:
+            type: string
+          sourceRef:
+            type: string
+          sourceTitle:
+            type: string
+          project:
+            type: string
+          confidence:
+            type: float
+          decidedAt:
+            type: string
+          createdAt:
+            type: integer
+          updatedAt:
+            type: integer
+          supersededBy:
+            type: string
+          supersedes:
+            type: string
+        indexes:
+          - sourceRef
+          - name: by-status-created
+            partition:
+              - status
+            range:
+              - createdAt
+      - name: finding
+        attributes:
+          id:
+            type: string
+          issueKey:
+            type: string
+          issueSummary:
+            type: string
+          project:
+            type: string
+          decisionId:
+            type: string
+          relation:
+            type: string
+          confidence:
+            type: float
+          explanation:
+            type: string
+          suggestion:
+            type: string
+          status:
+            type: string
+          method:
+            type: string
+          commented:
+            type: boolean
+          createdAt:
+            type: integer
+          updatedAt:
+            type: integer
+        indexes:
+          - issueKey
+          - decisionId
+          - name: by-status-created
+            partition:
+              - status
+            range:
+              - createdAt

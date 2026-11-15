@@ -6,3 +6,7 @@ precedent/static/ui/build/
 # local screenshots and scratch
 *.png
 !precedent/static/ui/public/*.png
+
+# Marketplace copy: only its manifest is tracked; sync with scripts/sync-marketplace.sh
+precedent-marketplace/*
+!precedent-marketplace/manifest.yml
