@@ -10,3 +10,4 @@ precedent/static/ui/build/
 # Marketplace copy: only its manifest is tracked; sync with scripts/sync-marketplace.sh
 precedent-marketplace/*
 !precedent-marketplace/manifest.yml
+!submission/assets/*.png
