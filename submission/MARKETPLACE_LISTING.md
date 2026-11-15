@@ -54,7 +54,7 @@ Try it in two minutes: open **Apps → Precedent – Decision log**, load the sa
 6. Check a plan, with the Stripe and GraphQL conflicts.
 
 ## Links required by Marketplace
-- **Privacy policy:** host `submission/PRIVACY.md` publicly (for example in the public GitHub repository).
+- **Privacy policy:** https://github.com/Baqir376/precedent/blob/main/submission/PRIVACY.md
 - **Support / contact:** ophunter073@gmail.com
 - **Documentation:** the repository README.
 - **Data security & privacy questionnaire:** answers are in PRIVACY.md (no egress, Forge storage only, Forge LLMs).
