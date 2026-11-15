@@ -114,3 +114,21 @@ test('heuristic judge is not fooled by a shared generic scope word', () => {
   const [j] = heuristicJudge(work('Rename the sessions dashboard title'), [LOG[0]]);
   assert.notEqual(j.relation, 'contradicts');
 });
+
+import { findDuplicate } from '../src/lib/dedupe';
+
+const flags = dec('flags', { statement: 'User-facing feature flags live in LaunchDarkly; do not add environment-variable flags for product features.', keywords: ['feature flag', 'launchdarkly', 'env var'], alternatives: ['Environment variables', 'Unleash'] });
+const extracted = (statement: string, keywords: string[]) => ({ statement, rationale: '', alternatives: [], keywords, scope: [], revisitWhen: '', ownerName: '', decidedAt: '', confidence: 0.9 });
+
+test('findDuplicate asks the model when wording differs and trusts its answer', async () => {
+  const x = extracted('Use LaunchDarkly for all feature flags instead of environment variables or Unleash.', ['launchdarkly', 'feature flag', 'unleash']);
+  assert.equal((await findDuplicate(x, [flags, ...LOG], async () => '{"duplicateOf":"flags"}'))?.id, 'flags');
+  assert.equal(await findDuplicate(x, [flags, ...LOG], async () => '{"duplicateOf":null}'), undefined);
+});
+
+test('findDuplicate skips the model when nothing is related', async () => {
+  let called = false;
+  const x = extracted('Mobile apps support iOS 16 and later.', ['ios', 'mobile']);
+  assert.equal(await findDuplicate(x, LOG, async () => { called = true; return '{"duplicateOf":null}'; }), undefined);
+  assert.equal(called, false);
+});

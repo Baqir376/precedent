@@ -1,6 +1,7 @@
 import type { Decision, DecisionSource, Finding, Judgement, WorkItem } from './types';
 import { extractDecisions, type ExtractMeta } from './extract';
 import { judge, retrieveCandidates } from './judge';
+import { findDuplicate } from './dedupe';
 import { forgeLlm, type LlmFn } from './llm';
 import { hash, tokenize } from './text';
 import * as store from './store';
@@ -122,15 +123,6 @@ export interface CaptureMeta extends ExtractMeta {
   ownerName: string;
 }
 
-function jaccard(a: string, b: string): number {
-  const A = new Set(tokenize(a));
-  const B = new Set(tokenize(b));
-  if (!A.size || !B.size) return 0;
-  let inter = 0;
-  for (const x of A) if (B.has(x)) inter++;
-  return inter / (A.size + B.size - inter);
-}
-
 export interface CaptureResult {
   method: 'llm' | 'heuristic';
   created: Decision[];
@@ -154,7 +146,7 @@ export async function captureDecisions(text: string, meta: CaptureMeta, existing
       skipped.push({ statement: x.statement, reason: 'Already captured from this source' });
       continue;
     }
-    const dup = [...active, ...created].find((d) => jaccard(d.statement, x.statement) >= 0.75);
+    const dup = await findDuplicate(x, [...active, ...created], llm);
     if (dup) {
       skipped.push({ statement: x.statement, reason: `Duplicate of "${dup.statement}"` });
       continue;
